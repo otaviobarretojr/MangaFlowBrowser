@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'com.mangaflow.browser'
-    compileSdk 36
+    compileSdk 37
 
     defaultConfig {
         applicationId 'com.mangaflow.browser'
