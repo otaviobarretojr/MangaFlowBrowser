@@ -91,6 +91,24 @@ jobs:
           set -euo pipefail
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
           "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/release/app-release.apk | head -n 3
+      - name: Publicar APK com link direto permanente (GitHub Release)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk release/MangaFlowBrowser.apk
+          TAG="v${MF_VERSION_NAME}"
+          printf 'MangaFlow Browser %s\n\nAPK Android assinado com chave permanente, instalável sobre versões anteriores.\n' "$MF_VERSION_NAME" > release-notes.md
+          gh release create "$TAG" release/MangaFlowBrowser.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "MangaFlow Browser $MF_VERSION_NAME" \
+            --notes-file release-notes.md \
+            --latest
+          echo "Download direto: https://github.com/$GITHUB_REPOSITORY/releases/latest/download/MangaFlowBrowser.apk" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Disponibilizar APK pronto para instalar
         uses: actions/upload-artifact@v4
         with:
