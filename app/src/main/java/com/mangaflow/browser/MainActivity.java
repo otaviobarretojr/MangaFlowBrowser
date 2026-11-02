@@ -211,6 +211,14 @@ public final class MainActivity extends Activity {
             if (last.isEmpty()) Toast.makeText(this, "Nenhuma leitura anterior", Toast.LENGTH_SHORT).show();
             else navigate(last);
         });
+        // Primeira versão gratuita: arquivos CBZ fornecidos pelo próprio usuário.
+        Button cbzButton = button("📂 Abrir mangá local (CBZ)");
+        LinearLayout.LayoutParams cbzParams = new LinearLayout.LayoutParams(-1, dp(48));
+        cbzParams.topMargin = dp(12);
+        homeOverlay.addView(cbzButton, cbzParams);
+        cbzButton.setOnClickListener(v ->
+            startActivity(new android.content.Intent(this, CbzReaderActivity.class)));
+
 
         fullscreenButton = button("⛶");
         FrameLayout.LayoutParams fp = new FrameLayout.LayoutParams(dp(43), dp(43), Gravity.TOP | Gravity.END);
