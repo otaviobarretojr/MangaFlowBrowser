@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.mangaflow.browser'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId 'com.mangaflow.browser'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '0.1.1'
+    }
+
+    signingConfigs {
+        release {
+            // Store the private key only in GitHub Actions secrets, never in the repository.
+            storeFile file(System.getenv('MF_KEYSTORE_PATH') ?: 'no-release-keystore.jks')
+            storePassword System.getenv('MF_SIGNING_PASSWORD') ?: ''
+            keyAlias 'mangaflow'
+            keyPassword System.getenv('MF_SIGNING_PASSWORD') ?: ''
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Versão publicada no repositório oficial da Mozilla em outubro/2026.
+    implementation 'org.mozilla.geckoview:geckoview:159.0.20261022150525'
+}

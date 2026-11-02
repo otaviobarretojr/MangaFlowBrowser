@@ -1,0 +1,56 @@
+name: MangaFlow Android — APK assinado
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Validar scripts e ícone
+        run: bash check_project.sh
+      - name: Instalar SDK 36
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+      - name: Preparar assinatura permanente (sem expor a chave)
+        env:
+          KEYSTORE_B64: ${{ secrets.MF_SIGNING_KEYSTORE_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$KEYSTORE_B64" || -z "$SIGNING_PASSWORD" ]]; then
+            echo 'Configure os secrets MF_SIGNING_KEYSTORE_BASE64 e MF_SIGNING_PASSWORD para gerar um APK que atualiza por cima.' >&2
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/mangaflow-release.jks"
+          echo "MF_KEYSTORE_PATH=$RUNNER_TEMP/mangaflow-release.jks" >> "$GITHUB_ENV"
+      - name: Montar APK de instalação e atualização
+        env:
+          MF_SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+      - name: Verificar assinatura do APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+      - name: Publicar APK assinado
+        uses: actions/upload-artifact@v4
+        with:
+          name: MangaFlow-v0.1.1-APK-assinado
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
