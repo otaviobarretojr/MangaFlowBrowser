@@ -24,6 +24,6 @@ jobs:
       - name: Verificar scripts e recursos
         run: bash check_project.sh
       - name: Instalar Android SDK
-        run: sdkmanager --install "platforms;android-37" "build-tools;36.0.0"
+        run: sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;36.0.0"
       - name: Compilar código sem distribuir APK debug
         run: gradle --no-daemon :app:assembleDebug --stacktrace
