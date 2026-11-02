@@ -31,4 +31,4 @@ Navegador Android para leitura vertical de mangás/manhwas com GeckoView, uma We
 
 ## Build
 
-Java 17; Gradle 8.13; AGP 8.13.2; compileSdk 36; minSdk 26; GeckoView 159.0.20261022150525. A primeira execução do CI depende da criação dos dois secrets de assinatura.
+Java 17; Gradle 9.3.1; AGP 9.1.1; compileSdk 37; minSdk 26; GeckoView 159.0.20261022150525. A primeira execução do CI depende da criação dos dois secrets de assinatura.
