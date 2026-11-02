@@ -1,0 +1,90 @@
+name: MangaFlow CBZ — Preview Android
+on:
+  push:
+    branches: [feat/leitor-gratuito-cbz-v1]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      MF_SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+      - name: Validar fontes e extensões
+        run: |
+          bash check_project.sh
+          node --check app/src/main/assets/reader/reader.js
+          node --check app/src/main/assets/reader/ad-cleaner.js
+          node --test tests/ad-cleaner.test.cjs
+      - name: SDK Android
+        run: sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;36.0.0"
+      - name: Gerar APK debug para teste inicial
+        run: gradle --no-daemon :app:assembleDebug --stacktrace
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MangaFlow-CBZ-Preview-Debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+      - name: Recuperar assinatura do MangaFlow (quando configurada)
+        if: env.MF_SIGNING_PASSWORD != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f signing/mangaflow-release.jks.enc
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 -md sha256 \
+            -in signing/mangaflow-release.jks.enc \
+            -out "$RUNNER_TEMP/mangaflow-release.jks" \
+            -pass env:MF_SIGNING_PASSWORD
+          keytool -list -keystore "$RUNNER_TEMP/mangaflow-release.jks" \
+            -storetype PKCS12 -storepass "$MF_SIGNING_PASSWORD" -alias mangaflow >/dev/null
+          echo "MF_KEYSTORE_PATH=$RUNNER_TEMP/mangaflow-release.jks" >> "$GITHUB_ENV"
+          echo "MF_VERSION_CODE=$((1000000 + GITHUB_RUN_NUMBER * 10 + GITHUB_RUN_ATTEMPT))" >> "$GITHUB_ENV"
+          echo "MF_VERSION_NAME=0.4.0-cbz.$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+      - name: Compilar APK release assinado
+        if: env.MF_SIGNING_PASSWORD != ''
+        run: gradle --no-daemon :app:assembleRelease --stacktrace
+      - name: Validar assinatura release
+        if: env.MF_SIGNING_PASSWORD != ''
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose \
+            app/build/outputs/apk/release/app-release.apk
+      - name: Publicar APK release instalável sobre MangaFlow
+        if: env.MF_SIGNING_PASSWORD != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: MangaFlow-CBZ-Preview-Assinado
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 90
+      - name: Publicar GitHub Release de teste
+        if: env.MF_SIGNING_PASSWORD != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk release/MangaFlow-CBZ-Preview.apk
+          gh release create "cbz-preview-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT" \
+            release/MangaFlow-CBZ-Preview.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "MangaFlow CBZ Preview $GITHUB_RUN_NUMBER" \
+            --notes "Leitor gratuito de CBZ locais, sem login. Não desbloqueia conteúdo pago de terceiros."
