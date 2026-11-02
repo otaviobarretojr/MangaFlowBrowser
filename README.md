@@ -16,3 +16,14 @@ Navegador Android especializado em leitura de mangás e manhwas.
 - Motor GeckoView, bloqueio inicial de anúncios/pop-ups, leitor imersivo e rolagem automática.
 - Java 17, Gradle 9.3.1, Android Gradle Plugin 9.1.1, compileSdk 37.
 - APK assinado disponível na aba **Actions**, quando a compilação terminar com sucesso.
+
+## Novidades da V0.2.0 — Rolagem por etapas
+
+- **Contínua:** de 10 a 160 px/s com ajuste pela barra.
+- **Por etapas:** avança cerca de 65% da tela a cada 2, 3, 5 ou 8 segundos.
+- Para configurar, toque no número da velocidade ou mantenha o botão **Auto** pressionado.
+- Toque na página para pausar a rolagem; ela também para ao fim do capítulo, considerando imagens ainda em carregamento.
+- A retomada de leitura espera o conteúdo carregar para não sobrescrever imediatamente o progresso salvo.
+- Favoritos, preferências, pacote Android e chave de assinatura foram preservados.
+
+**Teste no celular:** abra um capítulo longo, ative Leitor, escolha o modo por etapas, depois feche e reabra o app para verificar continuidade; teste também o bloqueio de anúncios em seus sites preferidos. A compilação pelo CI não substitui esse teste manual.

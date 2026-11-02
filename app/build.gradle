@@ -12,7 +12,7 @@ android {
         targetSdk 35
         // O CI aumenta o número a cada execução; preserva instalação por cima.
         versionCode (System.getenv('MF_VERSION_CODE')?.toInteger() ?: 1)
-        versionName (System.getenv('MF_VERSION_NAME') ?: '0.1.1')
+        versionName (System.getenv('MF_VERSION_NAME') ?: '0.2.0')
     }
 
     signingConfigs {

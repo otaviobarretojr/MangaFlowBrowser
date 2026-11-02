@@ -62,8 +62,8 @@ public final class MainActivity extends Activity {
     private EditText address;
     private TextView readStatus, speedText;
     private Button autoButton, readerButton, fullscreenButton, backButton, nextButton;
-    private boolean isPlaying, readerMode, fullscreen, canGoBack, canGoForward;
-    private int speed;
+    private boolean isPlaying, readerMode, fullscreen, canGoBack, canGoForward, stepMode;
+    private int speed, stepSeconds;
     private String currentUrl = "";
     private String currentTitle = "MangaFlow";
 
@@ -73,6 +73,9 @@ public final class MainActivity extends Activity {
         prefs = getSharedPreferences("mangaflow.local", MODE_PRIVATE);
         speed = prefs.getInt("speed", 45);
         readerMode = prefs.getBoolean("reader", false);
+        stepMode = prefs.getBoolean("step_mode", false);
+        stepSeconds = prefs.getInt("step_seconds", 3);
+        if (stepSeconds != 2 && stepSeconds != 3 && stepSeconds != 5 && stepSeconds != 8) stepSeconds = 3;
         buildUi();
         initBrowser();
         showHome();
@@ -248,17 +251,21 @@ public final class MainActivity extends Activity {
                 return;
             }
             isPlaying = !isPlaying;
+            command("mode", "value", stepMode ? "steps" : "continuous");
+            command("interval", "value", stepSeconds * 1000);
             command(isPlaying ? "play" : "pause", null, null);
             setAutoUi();
         });
+        autoButton.setOnLongClickListener(v -> { showAutoSettings(); return true; });
 
         LinearLayout scrollRow = new LinearLayout(this);
         scrollRow.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, dp(43));
         sp.topMargin = dp(4);
         bottomBar.addView(scrollRow, sp);
-        speedText = label("" + speed + " px/s", 12, MUTED, false);
-        scrollRow.addView(speedText, new LinearLayout.LayoutParams(dp(76), -1));
+        speedText = label(stepMode ? stepSeconds + "s / etapa" : speed + " px/s", 12, MUTED, false);
+        speedText.setOnClickListener(v -> showAutoSettings());
+        scrollRow.addView(speedText, new LinearLayout.LayoutParams(dp(86), -1));
         SeekBar seek = new SeekBar(this);
         seek.setMax(150);
         seek.setProgress(speed - 10);
@@ -267,14 +274,14 @@ public final class MainActivity extends Activity {
             @Override public void onProgressChanged(SeekBar bar, int progress, boolean fromUser) {
                 if (!fromUser) return;
                 speed = 10 + progress;
-                speedText.setText(speed + " px/s");
+                if (!stepMode) speedText.setText(speed + " px/s");
                 prefs.edit().putInt("speed", speed).apply();
                 command("speed", "value", speed);
             }
             @Override public void onStartTrackingTouch(SeekBar bar) { }
             @Override public void onStopTrackingTouch(SeekBar bar) { }
         });
-        readStatus = label("Modo leitor e rolagem disponíveis após abrir um site", 11, MUTED, false);
+        readStatus = label("Toque na velocidade ou segure Auto para escolher o modo", 11, MUTED, false);
         readStatus.setGravity(Gravity.CENTER);
         bottomBar.addView(readStatus, new LinearLayout.LayoutParams(-1, dp(20)));
     }
@@ -356,9 +363,12 @@ public final class MainActivity extends Activity {
                                     // A extensão pode conectar em navegações anteriores: ignorar se divergir.
                                     if (!url.equals(currentUrl)) return;
                                     command("speed", "value", speed);
+                                    command("mode", "value", stepMode ? "steps" : "continuous");
+                                    command("interval", "value", stepSeconds * 1000);
                                     command("reader", "enabled", readerMode);
                                     float pos = prefs.getFloat("p:" + url, 0f);
-                                    if (pos > 0f && pos < .98f) command("restore", "progress", pos);
+                                    // Sempre confirmar restauração, inclusive sem progresso anterior.
+                                    command("restore", "progress", pos);
                                 } else if ("progress".equals(type)) {
                                     String url = data.optString("url", "");
                                     if (!url.equals(currentUrl)) return;
@@ -454,6 +464,35 @@ public final class MainActivity extends Activity {
         } catch (Exception error) {
             if ("play".equals(name)) stopAutoLocally();
         }
+    }
+
+    private void showAutoSettings() {
+        String[] options = {
+            "Contínua — ajustar pela barra",
+            "Por etapas — a cada 2 segundos",
+            "Por etapas — a cada 3 segundos",
+            "Por etapas — a cada 5 segundos",
+            "Por etapas — a cada 8 segundos"
+        };
+        int selected = !stepMode ? 0 : stepSeconds == 2 ? 1 : stepSeconds == 3 ? 2 :
+            stepSeconds == 5 ? 3 : 4;
+        new AlertDialog.Builder(this)
+            .setTitle("Como deseja rolar o capítulo?")
+            .setSingleChoiceItems(options, selected, (dialog, which) -> {
+                stepMode = which != 0;
+                if (stepMode) stepSeconds = new int[]{0, 2, 3, 5, 8}[which];
+                prefs.edit().putBoolean("step_mode", stepMode)
+                    .putInt("step_seconds", stepSeconds).apply();
+                speedText.setText(stepMode ? stepSeconds + "s / etapa" : speed + " px/s");
+                command("mode", "value", stepMode ? "steps" : "continuous");
+                command("interval", "value", stepSeconds * 1000);
+                readStatus.setText(stepMode
+                    ? "Rolagem por etapas: " + stepSeconds + " segundos"
+                    : "Rolagem contínua: " + speed + " px/s");
+                dialog.dismiss();
+            })
+            .setNegativeButton("Cancelar", null)
+            .show();
     }
 
     private void stopAutoLocally() {
