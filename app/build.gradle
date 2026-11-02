@@ -18,6 +18,7 @@ android {
         release {
             // Store the private key only in GitHub Actions secrets, never in the repository.
             storeFile file(System.getenv('MF_KEYSTORE_PATH') ?: 'no-release-keystore.jks')
+            storeType 'PKCS12'
             storePassword System.getenv('MF_SIGNING_PASSWORD') ?: ''
             keyAlias 'mangaflow'
             keyPassword System.getenv('MF_SIGNING_PASSWORD') ?: ''

@@ -25,9 +25,9 @@ jobs:
           gradle-version: '9.3.1'
       - name: Validar scripts e ícone
         run: bash check_project.sh
-      - name: Instalar SDK 36
+      - name: Instalar Android SDK
         run: sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;36.0.0"
-      - name: Preparar assinatura permanente (sem expor a chave)
+      - name: Conferir chave de assinatura e preparar APK atualizável
         env:
           KEYSTORE_B64: ${{ secrets.MF_SIGNING_KEYSTORE_BASE64 }}
           SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
@@ -35,12 +35,31 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "$KEYSTORE_B64" || -z "$SIGNING_PASSWORD" ]]; then
-            echo 'Configure os secrets MF_SIGNING_KEYSTORE_BASE64 e MF_SIGNING_PASSWORD para gerar um APK que atualiza por cima.' >&2
+            echo "::error::Secrets ausentes: configure MF_SIGNING_KEYSTORE_BASE64 e MF_SIGNING_PASSWORD."
             exit 1
           fi
-          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/mangaflow-release.jks"
-          echo "MF_KEYSTORE_PATH=$RUNNER_TEMP/mangaflow-release.jks" >> "$GITHUB_ENV"
-      - name: Montar APK de instalação e atualização
+          SIGN_FILE="$RUNNER_TEMP/mangaflow-release.jks"
+          if ! printf '%s' "$KEYSTORE_B64" | tr -d '\r\n\t ' | base64 --decode > "$SIGN_FILE"; then
+            echo "::error::MF_SIGNING_KEYSTORE_BASE64 não é um Base64 válido. Copie novamente o arquivo KEYSTORE_BASE64.txt completo."
+            exit 1
+          fi
+          EXPECTED_SHA256="a9c9ea38aa2d565c224a1748d11279cfd8437121d719af8e73c10e84a18c6cf2"
+          ACTUAL_SHA256="$(sha256sum "$SIGN_FILE" | cut -d' ' -f1)"
+          if [[ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]]; then
+            echo "::error::A chave decodificada não corresponde ao kit permanente original. Substitua MF_SIGNING_KEYSTORE_BASE64 pelo conteúdo COMPLETO de KEYSTORE_BASE64.txt, sem trocar de chave."
+            exit 1
+          fi
+          if ! keytool -list -storetype PKCS12 -keystore "$SIGN_FILE" -storepass "$SIGNING_PASSWORD" -alias mangaflow > /dev/null 2>&1; then
+            echo "::error::A senha não abriu a chave original. Confira MF_SIGNING_PASSWORD com o conteúdo de SENHA_PRIVADA.txt."
+            exit 1
+          fi
+          if ! openssl pkcs12 -in "$SIGN_FILE" -nocerts -nodes -passin env:SIGNING_PASSWORD -out /dev/null > /dev/null 2>&1; then
+            echo "::error::A senha não permitiu recuperar a chave privada. Verifique o secret MF_SIGNING_PASSWORD."
+            exit 1
+          fi
+          echo "MF_KEYSTORE_PATH=$SIGN_FILE" >> "$GITHUB_ENV"
+          echo "Chave permanente original e senha verificadas, sem expor segredos."
+      - name: Montar APK release assinado
         env:
           MF_SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
         run: gradle --no-daemon :app:assembleRelease --stacktrace
