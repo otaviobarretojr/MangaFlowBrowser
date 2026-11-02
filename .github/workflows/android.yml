@@ -4,8 +4,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+# Evita duas execuções gerando chaves diferentes ao mesmo tempo.
+concurrency:
+  group: mangaflow-release
+  cancel-in-progress: false
+
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -27,51 +32,69 @@ jobs:
         run: bash check_project.sh
       - name: Instalar Android SDK
         run: sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;36.0.0"
-      - name: Conferir chave de assinatura e preparar APK atualizável
-        env:
-          KEYSTORE_B64: ${{ secrets.MF_SIGNING_KEYSTORE_BASE64 }}
-          SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
+
+      - name: Recuperar ou criar assinatura permanente (criptografada)
         shell: bash
+        env:
+          MF_SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
         run: |
           set -euo pipefail
-          if [[ -z "$KEYSTORE_B64" || -z "$SIGNING_PASSWORD" ]]; then
-            echo "::error::Secrets ausentes: configure MF_SIGNING_KEYSTORE_BASE64 e MF_SIGNING_PASSWORD."
+          umask 077
+          if [[ -z "${MF_SIGNING_PASSWORD:-}" ]]; then
+            echo "::error::O secret MF_SIGNING_PASSWORD está ausente."
+            exit 1
+          fi
+          if [[ "${#MF_SIGNING_PASSWORD}" -lt 6 ]]; then
+            echo "::error::A senha do secret MF_SIGNING_PASSWORD precisa ter pelo menos seis caracteres."
             exit 1
           fi
           SIGN_FILE="$RUNNER_TEMP/mangaflow-release.jks"
-          if ! printf '%s' "$KEYSTORE_B64" | tr -d '\r\n\t ' | base64 --decode > "$SIGN_FILE"; then
-            echo "::error::MF_SIGNING_KEYSTORE_BASE64 não é um Base64 válido. Copie novamente o arquivo KEYSTORE_BASE64.txt completo."
-            exit 1
+          ENCRYPTED_FILE="signing/mangaflow-release.jks.enc"
+          mkdir -p signing
+          if [[ -f "$ENCRYPTED_FILE" ]]; then
+            echo "Recuperando a chave permanente criptografada já existente."
+            if ! openssl enc -d -aes-256-cbc -pbkdf2 -iter 250000 -md sha256 -in "$ENCRYPTED_FILE" -out "$SIGN_FILE" -pass env:MF_SIGNING_PASSWORD; then
+              echo "::error::Não foi possível descriptografar a chave. Confira MF_SIGNING_PASSWORD. Não gere outra chave para atualizar o app."
+              exit 1
+            fi
+          else
+            echo "Primeira compilação: gerando uma chave privada permanente para futuras atualizações."
+            keytool -genkeypair -noprompt -keystore "$SIGN_FILE" -storetype PKCS12 \
+              -storepass "$MF_SIGNING_PASSWORD" -keypass "$MF_SIGNING_PASSWORD" \
+              -alias mangaflow -keyalg RSA -keysize 3072 -sigalg SHA256withRSA \
+              -validity 10000 -dname "CN=MangaFlow Browser, OU=Android, O=MangaFlow, C=BR"
+            openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 -md sha256 \
+              -in "$SIGN_FILE" -out "$ENCRYPTED_FILE" -pass env:MF_SIGNING_PASSWORD
+            git add "$ENCRYPTED_FILE"
+            git -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -m "chore(signing): guardar chave de atualização criptografada"
+            git push origin "HEAD:main"
           fi
-          EXPECTED_SHA256="a9c9ea38aa2d565c224a1748d11279cfd8437121d719af8e73c10e84a18c6cf2"
-          ACTUAL_SHA256="$(sha256sum "$SIGN_FILE" | cut -d' ' -f1)"
-          if [[ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ]]; then
-            echo "::error::A chave decodificada não corresponde ao kit permanente original. Substitua MF_SIGNING_KEYSTORE_BASE64 pelo conteúdo COMPLETO de KEYSTORE_BASE64.txt, sem trocar de chave."
-            exit 1
-          fi
-          if ! keytool -list -storetype PKCS12 -keystore "$SIGN_FILE" -storepass "$SIGNING_PASSWORD" -alias mangaflow > /dev/null 2>&1; then
-            echo "::error::A senha não abriu a chave original. Confira MF_SIGNING_PASSWORD com o conteúdo de SENHA_PRIVADA.txt."
-            exit 1
-          fi
-          if ! openssl pkcs12 -in "$SIGN_FILE" -nocerts -nodes -passin env:SIGNING_PASSWORD -out /dev/null > /dev/null 2>&1; then
-            echo "::error::A senha não permitiu recuperar a chave privada. Verifique o secret MF_SIGNING_PASSWORD."
+          if ! keytool -list -keystore "$SIGN_FILE" -storetype PKCS12 \
+            -storepass "$MF_SIGNING_PASSWORD" -alias mangaflow >/dev/null 2>&1; then
+            echo "::error::A chave privada não corresponde à senha configurada."
             exit 1
           fi
           echo "MF_KEYSTORE_PATH=$SIGN_FILE" >> "$GITHUB_ENV"
-          echo "Chave permanente original e senha verificadas, sem expor segredos."
-      - name: Montar APK release assinado
+          echo "Assinatura permanente pronta; a chave NÃO foi exposta no repositório."
+          echo "MF_VERSION_CODE=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))" >> "$GITHUB_ENV"
+          echo "MF_VERSION_NAME=0.1.1.$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+
+      - name: Compilar release assinado
         env:
           MF_SIGNING_PASSWORD: ${{ secrets.MF_SIGNING_PASSWORD }}
         run: gradle --no-daemon :app:assembleRelease --stacktrace
-      - name: Verificar assinatura do APK
+      - name: Conferir assinatura e identidade do APK
         shell: bash
         run: |
           set -euo pipefail
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
-      - name: Publicar APK assinado
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging app/build/outputs/apk/release/app-release.apk | head -n 3
+      - name: Disponibilizar APK pronto para instalar
         uses: actions/upload-artifact@v4
         with:
-          name: MangaFlow-v0.1.1-APK-assinado
+          name: MangaFlow-APK-Assinado
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90

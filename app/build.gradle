@@ -10,13 +10,14 @@ android {
         applicationId 'com.mangaflow.browser'
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '0.1.1'
+        // O CI aumenta o número a cada execução; preserva instalação por cima.
+        versionCode (System.getenv('MF_VERSION_CODE')?.toInteger() ?: 1)
+        versionName (System.getenv('MF_VERSION_NAME') ?: '0.1.1')
     }
 
     signingConfigs {
         release {
-            // Store the private key only in GitHub Actions secrets, never in the repository.
+            // Keystore privada gerada no CI e mantida criptografada no GitHub.
             storeFile file(System.getenv('MF_KEYSTORE_PATH') ?: 'no-release-keystore.jks')
             storeType 'PKCS12'
             storePassword System.getenv('MF_SIGNING_PASSWORD') ?: ''
@@ -39,6 +40,5 @@ android {
 }
 
 dependencies {
-    // Versão publicada no repositório oficial da Mozilla em outubro/2026.
     implementation 'org.mozilla.geckoview:geckoview:159.0.20261022150525'
 }
