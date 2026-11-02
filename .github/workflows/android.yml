@@ -26,7 +26,7 @@ jobs:
       - name: Validar scripts e ícone
         run: bash check_project.sh
       - name: Instalar SDK 36
-        run: sdkmanager --install "platforms;android-37" "build-tools;36.0.0"
+        run: sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;36.0.0"
       - name: Preparar assinatura permanente (sem expor a chave)
         env:
           KEYSTORE_B64: ${{ secrets.MF_SIGNING_KEYSTORE_BASE64 }}
