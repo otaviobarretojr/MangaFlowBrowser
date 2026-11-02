@@ -65,7 +65,7 @@ jobs:
               -validity 10000 -dname "CN=MangaFlow Browser, OU=Android, O=MangaFlow, C=BR"
             openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 -md sha256 \
               -in "$SIGN_FILE" -out "$ENCRYPTED_FILE" -pass env:MF_SIGNING_PASSWORD
-            git add "$ENCRYPTED_FILE"
+            git add -f "$ENCRYPTED_FILE"
             git -c user.name="github-actions[bot]" \
               -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
               commit -m "chore(signing): guardar chave de atualização criptografada"
