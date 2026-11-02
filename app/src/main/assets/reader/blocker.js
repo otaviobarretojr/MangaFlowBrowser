@@ -9,6 +9,8 @@ const blockedHosts = new Set([
   "popcash.net", "exoclick.com", "trafficjunky.net", "adsterra.com",
   "clickadu.com", "hilltopads.net", "onclicka.com", "mgid.com",
   "criteo.com", "criteo.net", "adnxs.com", "pubmatic.com",
+  "monetag.com", "highperformanceformat.com", "highperformancedisplayformat.com",
+  "ad-maven.com", "richads.com", "pushnative.com",
   "rubiconproject.com", "openx.net", "smartadserver.com",
   "scorecardresearch.com", "quantserve.com"
 ]);

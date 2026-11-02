@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "MangaFlow Reader",
-  "version": "0.1.0",
-  "description": "Integração local de leitura e filtros simples para o MangaFlow.",
+  "version": "0.3.0",
+  "description": "Leitor local com bloqueio de trackers e limpeza cosmética não destrutiva.",
   "browser_specific_settings": {
     "gecko": {
       "id": "reader@mangaflow.local"
@@ -17,12 +17,28 @@
     "geckoViewAddons"
   ],
   "background": {
-    "scripts": ["blocker.js"]
+    "scripts": [
+      "blocker.js"
+    ]
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["reader.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "ad-cleaner.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "reader.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }

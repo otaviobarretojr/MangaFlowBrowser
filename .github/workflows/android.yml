@@ -30,6 +30,12 @@ jobs:
           gradle-version: '9.3.1'
       - name: Validar scripts e ícone
         run: bash check_project.sh
+      - name: Testar filtros de anúncios e sintaxe da extensão
+        run: |
+          node --check app/src/main/assets/reader/ad-cleaner.js
+          node --check app/src/main/assets/reader/blocker.js
+          node --check app/src/main/assets/reader/reader.js
+          node --test tests/ad-cleaner.test.cjs
       - name: Instalar Android SDK
         run: sdkmanager --channel=3 --install "platforms;android-37.0" "build-tools;36.0.0"
 
@@ -79,7 +85,7 @@ jobs:
           echo "MF_KEYSTORE_PATH=$SIGN_FILE" >> "$GITHUB_ENV"
           echo "Assinatura permanente pronta; a chave NÃO foi exposta no repositório."
           echo "MF_VERSION_CODE=$((GITHUB_RUN_NUMBER * 100 + GITHUB_RUN_ATTEMPT))" >> "$GITHUB_ENV"
-          echo "MF_VERSION_NAME=0.2.0.$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
+          echo "MF_VERSION_NAME=0.3.0.$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT" >> "$GITHUB_ENV"
 
       - name: Compilar release assinado
         env:

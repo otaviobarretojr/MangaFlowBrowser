@@ -27,3 +27,15 @@ Navegador Android especializado em leitura de mangás e manhwas.
 - Favoritos, preferências, pacote Android e chave de assinatura foram preservados.
 
 **Teste no celular:** abra um capítulo longo, ative Leitor, escolha o modo por etapas, depois feche e reabra o app para verificar continuidade; teste também o bloqueio de anúncios em seus sites preferidos. A compilação pelo CI não substitui esse teste manual.
+
+## V0.3.0 — Melhoria de bloqueio (NeoToons)
+
+- Adicionado `ad-cleaner.js`, ativo desde o início do carregamento, sem precisar ativar o modo Leitor.
+- Detecta de forma conservadora o overlay flutuante "TESTE GRÁTIS / IPTV" visto no NeoToons e anúncios com nomes/hosts conhecidos.
+- `MutationObserver` remove elementos publicitários inseridos depois de carregar a página, sem varreduras contínuas durante a rolagem.
+- Protege painéis do capítulo, imagens do leitor e navegação. Não oculta indiscriminadamente `modal`, `sticky`, `banner` nem todas as imagens.
+- Atualiza a versão da WebExtension para garantir sua reinstalação no GeckoView após atualizar o APK.
+- Não altera a identidade do app nem a assinatura existente; instala por cima com `versionCode` crescente.
+- Testes de sintaxe e regressão do bloqueador rodam antes de compilar o APK.
+
+**Limitação:** um anúncio desenhado dentro de uma imagem do próprio capítulo não pode ser removido com segurança usando apenas filtragem do DOM; requer identificação confiável do arquivo ou controle manual para não apagar quadros legítimos.
