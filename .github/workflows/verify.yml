@@ -20,10 +20,10 @@ jobs:
           packages: 'platform-tools'
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.13'
+          gradle-version: '9.3.1'
       - name: Verificar scripts e recursos
         run: bash check_project.sh
       - name: Instalar Android SDK
-        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+        run: sdkmanager --install "platforms;android-37" "build-tools;36.0.0"
       - name: Compilar código sem distribuir APK debug
         run: gradle --no-daemon :app:assembleDebug --stacktrace
