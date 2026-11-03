@@ -16,11 +16,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Instalar API 36 no SDK preinstalado
-        run: |
-          echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - name: Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+      - name: API 36 e Build Tools
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Instalar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
