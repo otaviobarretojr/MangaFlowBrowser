@@ -1,41 +1,35 @@
-# MangaFlow Browser
+# Túnel Pessoal — Android
 
-Navegador Android especializado em leitura de mangás e manhwas.
+Aplicativo Android simples para uma VPN WireGuard pessoal, sem anúncios, login ou telemetria. Baseado na biblioteca oficial `com.wireguard.android:tunnel:1.0.20260102` (Apache 2.0).
 
-## Criar um APK instalável e atualizável
+## O que faz
+- Importa um arquivo WireGuard `.conf` do dispositivo.
+- Solicita a permissão de VPN do Android.
+- Liga/desliga o túnel com um toque.
+- Salva a configuração criptografada com Android Keystore AES-GCM.
+- Trabalha com um perfil de cada vez, sem enviar configurações a serviços próprios.
 
-1. Em **Settings → Secrets and variables → Actions**, mantenha somente o segredo obrigatório `MF_SIGNING_PASSWORD` (pelo menos 6 caracteres, idealmente uma senha forte). O segredo antigo `MF_SIGNING_KEYSTORE_BASE64` não é mais usado.
-2. Em **Actions → MangaFlow Android — APK assinado → Run workflow**, execute o processo.
-3. Na **primeira execução**, o GitHub Actions gera uma chave permanente, criptografa-a com a senha secreta e grava apenas o arquivo `signing/mangaflow-release.jks.enc` no repositório.
-4. O mesmo workflow monta o APK release e publica o artifact **MangaFlow-APK-Assinado**.
-5. Nas próximas execuções, ele descriptografa a **mesma chave**, preserva o `applicationId` `com.mangaflow.browser`, incrementa automaticamente o `versionCode` e gera um APK que pode instalar por cima.
+## O que NÃO faz
+- Não fornece servidor VPN, assinatura, IP público ou perfil automaticamente.
+- Não garante acesso em redes corporativas que bloqueiam túneis VPN.
+- Não finge que a conexão está funcionando só porque o túnel foi ativado.
+- Não contém função de ofuscação ou disfarce de tráfego.
+- Não substitui auditorias, política de segurança ou monitoramento da rede.
 
-**Atenção:** faça backup do arquivo `signing/mangaflow-release.jks.enc` e guarde em segurança o valor do secret `MF_SIGNING_PASSWORD`. Sem essa senha não será possível recuperar a chave de assinatura para futuras atualizações. Não revele a senha nem publique a keystore sem criptografia. O repositório pode continuar público.
+## Como obter o APK pelo celular
+Abra **Actions** > **Gerar APK Túnel Pessoal**, abra a execução mais recente e baixe o artefato `TunelPessoal-APK`. O ZIP contém `app-debug.apk` pronto para instalar no Android.
 
-### Projeto
-- Motor GeckoView, bloqueio inicial de anúncios/pop-ups, leitor imersivo e rolagem automática.
-- Java 17, Gradle 9.3.1, Android Gradle Plugin 9.1.1, compileSdk 37.
-- APK assinado disponível na aba **Actions**, quando a compilação terminar com sucesso.
+## Como conectar
+1. Tenha acesso autorizado a um servidor WireGuard e obtenha dele um arquivo `.conf`.
+2. Instale o APK, importe o perfil e toque em **CONECTAR**.
+3. Autorize a VPN no aviso do Android.
+4. Verifique acesso e IP externo. A mensagem “túnel ativado” não confirma que o servidor responde.
 
-## Novidades da V0.2.0 — Rolagem por etapas
+## Builds
+- Android Gradle Plugin 8.10.1, Gradle 8.13, JDK 17, API 36.
+- O workflow gera APK debug assinado. Para atualização por cima, o mesmo certificado deve ser reutilizado. O workflow usa cache de keystore debug, que pode expirar; para distribuição duradoura, configure uma keystore de release mantida em segredo.
+- O serviço VPN é fornecido e declarado pelo manifesto da biblioteca oficial WireGuard.
+- Projeto V1: reconexão após o processo ser encerrado e indicador de handshake ainda não são implementados.
 
-- **Contínua:** de 10 a 160 px/s com ajuste pela barra.
-- **Por etapas:** avança cerca de 65% da tela a cada 2, 3, 5 ou 8 segundos.
-- Para configurar, toque no número da velocidade ou mantenha o botão **Auto** pressionado.
-- Toque na página para pausar a rolagem; ela também para ao fim do capítulo, considerando imagens ainda em carregamento.
-- A retomada de leitura espera o conteúdo carregar para não sobrescrever imediatamente o progresso salvo.
-- Favoritos, preferências, pacote Android e chave de assinatura foram preservados.
-
-**Teste no celular:** abra um capítulo longo, ative Leitor, escolha o modo por etapas, depois feche e reabra o app para verificar continuidade; teste também o bloqueio de anúncios em seus sites preferidos. A compilação pelo CI não substitui esse teste manual.
-
-## V0.3.0 — Melhoria de bloqueio (NeoToons)
-
-- Adicionado `ad-cleaner.js`, ativo desde o início do carregamento, sem precisar ativar o modo Leitor.
-- Detecta de forma conservadora o overlay flutuante "TESTE GRÁTIS / IPTV" visto no NeoToons e anúncios com nomes/hosts conhecidos.
-- `MutationObserver` remove elementos publicitários inseridos depois de carregar a página, sem varreduras contínuas durante a rolagem.
-- Protege painéis do capítulo, imagens do leitor e navegação. Não oculta indiscriminadamente `modal`, `sticky`, `banner` nem todas as imagens.
-- Atualiza a versão da WebExtension para garantir sua reinstalação no GeckoView após atualizar o APK.
-- Não altera a identidade do app nem a assinatura existente; instala por cima com `versionCode` crescente.
-- Testes de sintaxe e regressão do bloqueador rodam antes de compilar o APK.
-
-**Limitação:** um anúncio desenhado dentro de uma imagem do próprio capítulo não pode ser removido com segurança usando apenas filtragem do DOM; requer identificação confiável do arquivo ou controle manual para não apagar quadros legítimos.
+## Aviso
+Use a VPN apenas em redes e contextos onde tenha autorização. O tráfego vai passar pelo servidor VPN que você selecionar; escolha um operador de confiança.

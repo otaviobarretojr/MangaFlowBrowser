@@ -1,44 +1,29 @@
 plugins {
     id 'com.android.application'
 }
-
 android {
-    namespace 'com.mangaflow.browser'
-    compileSdk 37
-
+    namespace 'br.com.tunelpessoal'
+    compileSdk 36
     defaultConfig {
-        applicationId 'com.mangaflow.browser'
+        applicationId 'br.com.tunelpessoal'
         minSdk 26
         targetSdk 35
-        // O CI aumenta o número a cada execução; preserva instalação por cima.
-        versionCode (System.getenv('MF_VERSION_CODE')?.toInteger() ?: 1)
-        versionName (System.getenv('MF_VERSION_NAME') ?: '0.3.0')
+        versionCode 1
+        versionName '1.0.0'
     }
-
-    signingConfigs {
-        release {
-            // Keystore privada gerada no CI e mantida criptografada no GitHub.
-            storeFile file(System.getenv('MF_KEYSTORE_PATH') ?: 'no-release-keystore.jks')
-            storeType 'PKCS12'
-            storePassword System.getenv('MF_SIGNING_PASSWORD') ?: ''
-            keyAlias 'mangaflow'
-            keyPassword System.getenv('MF_SIGNING_PASSWORD') ?: ''
-        }
-    }
-
-    buildTypes {
-        release {
-            minifyEnabled false
-            signingConfig signingConfigs.release
-        }
-    }
-
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+    }
+    buildTypes {
+        release { minifyEnabled false }
+    }
+    packaging {
+        jniLibs { useLegacyPackaging = false }
     }
 }
-
 dependencies {
-    implementation 'org.mozilla.geckoview:geckoview:159.0.20261022150525'
+    implementation 'com.wireguard.android:tunnel:1.0.20260102'
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
 }
